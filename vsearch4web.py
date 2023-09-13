@@ -4,8 +4,33 @@ from vsearch import search4letters
 app = Flask(__name__)
 
 def log_request(req: 'flask_request', res: str) ->None:
-    with open('vsearch.log', 'a') as log:
-        print(req.form, req.remote_addr, req.user_agent, res, file=log, sep='|')
+    """Log the web request in a database"""
+    dbconfig = {'host':'127.0.0.1',
+                'user':'root',
+                'password':'@!kumamake254!@',
+                'database':'vsearchlogDB',}
+    
+    import mysql.connector
+
+    conn = mysql.connector.connect(**dbconfig)
+    cursor = conn.cursor()
+    _SQL = """insert into log
+        (phrase, letters, ip, browser_string, results)
+        values
+        (%s, %s, %s, %s, %s)"""
+    if not req.user_agent.browser:
+        browser_string = ''
+    else:
+        browser_string = req.user_agent.browser
+
+    cursor.execute(_SQL, (req.form['phrase'], 
+                          req.form['letters'], 
+                          req.remote_addr,
+                          browser_string,
+                          res, ))
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 @app.route('/search4', methods=['POST'])
 def do_search() -> 'html':
